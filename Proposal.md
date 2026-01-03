@@ -1,293 +1,124 @@
-Project-III (BCA)
-Smart Attendance System using Django & Face Recognition
-1. Project Overview (What the Project Does)
-
-The Smart Attendance System is a web-based Student Attendance Management System developed using Django that automatically marks student attendance using Face Recognition technology.
-
-Instead of traditional manual attendance, the system verifies a student’s identity through:
-
-Student ID verification (QR code or manual ID entry)
-
-Live face scanning using a webcam
-
-Only when both ID and face match, attendance is marked. This prevents proxy attendance and improves accuracy, efficiency, and security.
-
-This project is designed as a solo Django project and focuses only on student attendance, making it ideal for BCA Project-III.
-
-2. Problem Statement
-
-Traditional attendance systems:
-
-Are time-consuming
-
-Allow proxy attendance
-
-Require manual effort
-
-Are difficult to manage for large classes
-
-Proposed Solution:
-Use Face Recognition + QR-based identification to automate attendance in a secure and reliable manner.
-
-3. Objectives of the Project
-
-To automate student attendance using face recognition
-
-To prevent proxy attendance
-
-To store attendance records digitally
-
-To generate attendance reports easily
-
-To provide a simple admin interface for managing students
-
-4. Technologies Used
-Category	Technology
-Programming Language	Python
-Web Framework	Django
-Face Recognition	OpenCV + face_recognition
-Database	SQLite / MySQL / MongoDB (Djongo)
-Frontend	HTML, CSS, JavaScript
-Webcam Access	WebRTC (getUserMedia)
-QR Code	qrcode Python library
-Export Reports	CSV / Excel
-5. System Modules
-5.1 Student Registration Module
-
-Admin registers students
-
-Stores:
-
-Student ID (unique)
-
-Name
-
-Photo (used for face encoding)
-
-Automatically generates:
-
-QR code for each student
-
-Face encoding from uploaded photo
-
-5.2 Identification Module
-
-Students identify themselves using:
-
-QR code scan OR
-
-Manual entry of student ID
-
-The system fetches:
-
-Student details
-
-Stored face encoding
-
-5.3 Face Recognition Module
-
-Webcam captures live image
-
-Face detected using OpenCV
-
-Encoding generated using face_recognition
-
-Encoding compared with stored encoding
-
-Result:
-
-✅ Match → Attendance marked
-
-❌ No match → Attendance rejected
-
-5.4 Attendance Management Module
-
-Marks attendance automatically
-
-Stores:
-
-Student ID
-
-Date & time
-
-Optional captured photo
-
-Prevents duplicate attendance on same day
-
-5.5 Report Generation Module
-
-Admin can:
-
-View daily attendance
-
-Export CSV / Excel files
-
-Useful for records and evaluation
-
-6. Complete System Workflow
-Step 1: Student Registration
-
-Admin uploads student photo
-
-System:
-
-Generates QR code
-
-Extracts and stores face encoding
-
-Step 2: Student Attendance
-
-Student scans QR code or enters Student ID
-
-Webcam starts automatically
-
-Live face scan begins
-
-System compares face with stored encoding
-
-If matched → Attendance marked
-
-If not matched → Error message displayed
-
-Step 3: Attendance Storage
-
-Attendance saved in database
-
-Timestamp recorded
-
-Optional snapshot stored
-
-7. Database Design (Simple)
-Student Model
-Student
-- id
-- student_id (unique)
-- name
-- photo
-- face_encoding
-- qr_code
-
-Attendance Model
-Attendance
-- id
-- student (FK)
-- date
-- time
-- captured_image (optional)
-
-8. How to Start This Project from Beginning (Step-by-Step)
-Step 1: Create Virtual Environment
-python -m venv venv
-source venv/bin/activate
-
-Step 2: Install Dependencies
-pip install django opencv-python face-recognition pillow qrcode numpy
-
-
-⚠️ On Linux, install:
-
-sudo pacman -S cmake dlib
-
-Step 3: Create Django Project
-django-admin startproject smart_attendance
-cd smart_attendance
-python manage.py startapp attendance
-
-Step 4: Configure settings.py
-INSTALLED_APPS = [
-    'attendance',
-    'django.contrib.admin',
-    'django.contrib.auth',
-]
-
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-
-Step 5: Create Models
-
-Student model with photo & encoding
-
-Attendance model with timestamp
-
-Face encoding is automatically generated when photo is saved.
-
-Step 6: Face Encoding on Registration
-
-When admin uploads a photo:
-
-System extracts face encoding
-
-Saves encoding in database (JSON or Binary)
-
-This ensures no repeated computation during attendance.
-
-Step 7: Webcam Face Scan
-
-JavaScript captures image from webcam
-
-Sends image to Django via POST
-
-Django:
-
-Decodes image
-
-Extracts face encoding
-
-Compares with stored encoding
-
-Step 8: Attendance Marking
-
-If face matches:
-
-Attendance record created
-
-If already marked today:
-
-Show “Attendance already recorded”
-
-9. Automatic Face Scan & Save (Your Requirement)
-
-✔ Face scan starts automatically after ID verification
-✔ Live face captured from webcam
-✔ Face encoding compared in backend
-✔ Attendance saved automatically in database
-
-This satisfies full automation.
-
-10. Advantages of the System
-
-Eliminates manual attendance
-
-Prevents fake attendance
-
-Fast and accurate
-
-Scalable for large classes
-
-Digital record keeping
-
-11. Limitations
-
-Requires camera and good lighting
-
-Initial setup cost
-
-Face recognition accuracy depends on image quality
-
-12. Future Enhancements
-
-Mobile app integration
-
-Cloud deployment
-
-Liveness detection (anti-spoofing)
-
-SMS / Email notification
-
-Class-wise attendance analytics
-
-13. Conclusion
-
-The Smart Attendance System is an intelligent and secure solution for managing student attendance using Django and Face Recognition.
-It automates attendance, improves accuracy, and reduces manual effort, making it ideal for academic institutions.
-
+# Proposal — Smart Attendance System (Project-III BCA)
+
+## 1. Project Overview
+The Smart Attendance System is a web-based solution that automates student attendance by combining QR code identification and face recognition. Backend is built with Django REST Framework; optional frontend uses React.js. Attendance records are stored in MariaDB (or SQLite for development).
+
+## 2. Problem Statement
+Traditional attendance is manual, time-consuming and vulnerable to proxy/fake entries. This system enforces identity by requiring a scanned QR / student ID plus live face verification.
+
+## 3. Proposed Solution
+- Student scans QR or enters roll number.
+- Frontend captures a webcam image.
+- Backend compares the live face with the stored encoding for that student.
+- On match, attendance is recorded with timestamp and optional snapshot.
+
+## 4. Objectives
+- Automate attendance workflow.
+- Prevent proxy attendance.
+- Keep digital, exportable attendance records.
+- Provide an admin interface for student management and report export.
+
+## 5. Technology Stack
+- Python 3.10, Django 4.2 + Django REST Framework
+- MariaDB (production) / SQLite (dev)
+- face_recognition (dlib) or client-side face-api.js
+- OpenCV, Pillow, qrcode
+- React.js (optional frontend)
+- mysqlclient for Django MySQL connectivity
+
+## 6. System Architecture (high level)
+React Frontend (QR + Webcam)
+  ↕
+Django REST API (Student verification, face matching, attendance storage)
+  ↕
+MariaDB / SQLite (attendance + student data)
+
+## 7. Features
+- Student registration (photo upload, face encoding, QR generation)
+- QR-based check-in with live face verification
+- Timestamped attendance records and duplicate prevention
+- Admin export (CSV/Excel) and management UI
+
+## 8. Models (example)
+Use these as guidance — adjust fields to your app.
+
+```python
+# filepath: /home/sujjalbtw/Projects/Project-III-BCA/backend/smart_attendance/accounts/models.py
+class Student(models.Model):
+    roll_no = models.CharField(max_length=20, unique=True)
+    name = models.CharField(max_length=100)
+    face_encoding = models.BinaryField()
+    qr_code = models.ImageField(upload_to='qr_codes/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+```
+
+```python
+# filepath: /home/sujjalbtw/Projects/Project-III-BCA/backend/smart_attendance/attendance/models.py
+class Attendance(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    date = models.DateField(auto_now_add=True)
+    time = models.TimeField(auto_now_add=True)
+    captured_image = models.ImageField(upload_to='attendance_images/', null=True, blank=True)
+```
+
+## 9. Key utilities (examples)
+- Face matching (server-side):
+```python
+# filepath: /home/sujjalbtw/Projects/Project-III-BCA/backend/smart_attendance/attendance/utils/face_utils.py
+import face_recognition
+import numpy as np
+
+def match_face(unknown_image_path, student_list):
+    unknown_image = face_recognition.load_image_file(unknown_image_path)
+    unknown_encodings = face_recognition.face_encodings(unknown_image)
+    if not unknown_encodings:
+        return None
+    unknown_enc = unknown_encodings[0]
+    for student in student_list:
+        known_enc = np.frombuffer(student.face_encoding, dtype=np.float64)
+        if face_recognition.compare_faces([known_enc], unknown_enc)[0]:
+            return student
+    return None
+```
+
+- QR generation:
+```python
+# filepath: /home/sujjalbtw/Projects/Project-III-BCA/backend/smart_attendance/attendance/utils/qr_utils.py
+import qrcode
+from io import BytesIO
+from django.core.files import File
+
+def generate_qr_code(roll_no):
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(roll_no)
+    qr.make(fit=True)
+    img = qr.make_image(fill='black', back_color='white')
+    buffer = BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    return File(buffer, name=f"{roll_no}_qr.png")
+```
+
+## 10. Endpoints (examples)
+- POST /register/ — form-data: roll_no, name, image → register student, compute face encoding, save QR.
+- POST /attendance/ — form-data: roll_no, image → verify face and mark attendance.
+
+## 11. Development steps (quick)
+1. Create venv, activate it.
+2. Install requirements (see backend/requirements.txt).
+3. Configure DB in settings or .env.
+4. Run migrations and create superuser.
+5. Start server and test endpoints with Postman or frontend.
+
+## 12. Risks & Limitations
+- Face recognition requires good lighting and frontal images.
+- dlib builds can be heavy; prefer client-side face-api.js if building dlib is impractical.
+
+## 13. Future Enhancements
+- Real-time WebRTC capture (no file upload)
+- Liveness detection
+- Mobile app integration
+- Class/subject analytics with reports
+
+## 14. Conclusion
+This proposal defines scope, architecture and the main deliverables for a robust Smart Attendance System using QR + face recognition. It is suitable for a BCA final project and can be extended to production with Docker and proper CI/CD.
