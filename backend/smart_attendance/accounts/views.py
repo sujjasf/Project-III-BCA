@@ -1,6 +1,4 @@
 from django.shortcuts import render
-
-# Create your views here.
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Student
@@ -16,14 +14,18 @@ class RegisterStudent(APIView):
                 f.write(chunk)
 
         encoding = get_face_encoding(path)
+        print(f"Encoding returned from get_face_encoding: {encoding}")
 
         if encoding is None:
-            return Response({"error": "No face detected"}, status=400)
+            return Response({"error": "No face detected or encoding error"}, status=400)
 
-        Student.objects.create(
+        # Save student with encoding and image
+        student = Student.objects.create(
             roll_no=request.data['roll_no'],
             name=request.data['name'],
             face_encoding=encoding
         )
+        student.image.save(image.name, image, save=True)
+        print(f"Registered student {student.roll_no} with encoding shape: {encoding and len(encoding)}")
 
         return Response({"message": "Student registered successfully"})

@@ -17,9 +17,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from accounts.views import RegisterStudent
+from attendance.views import MarkAttendance
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('register/', RegisterStudent.as_view()),
-    # path('attendance/', MarkAttendance.as_view()),
+    path('attendance/', MarkAttendance.as_view()),
 ]

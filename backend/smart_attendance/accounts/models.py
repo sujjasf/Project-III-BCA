@@ -5,6 +5,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from datetime import datetime
 import os
+import numpy as np
 
 def student_image_upload_path(instance, filename):
     ext = filename.split('.')[-1]
@@ -13,28 +14,74 @@ def student_image_upload_path(instance, filename):
     filename = f"{safe_name}_{date_str}.{ext}"
     return os.path.join('students', filename)
 
+def default_encoding():
+    # Return a 128-dim zero vector as bytes (1024 bytes)
+    return np.zeros(128, dtype=np.float64).tobytes()
 
 class Student(models.Model):
     roll_no = models.CharField(max_length=20, unique=True)
     name = models.CharField(max_length=100)
-    face_encoding = models.BinaryField()
-    # image = models.ImageField(upload_to='students/', null=True, blank=True)
+    # Default to 128-dim zero vector
+    face_encoding = models.BinaryField(default=default_encoding, null=True, blank=True)
     image = models.ImageField(upload_to=student_image_upload_path, null=True, blank=True)
     qr_code = models.ImageField(upload_to='qr_codes/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def has_valid_encoding(self):
+        # Returns True if face_encoding is a valid 128-dim float64 vector AND not just zeros
+        if not self.face_encoding:
+            return False
+        try:
+            arr = np.frombuffer(self.face_encoding, dtype=np.float64)
+            return arr.shape == (128,) and not np.all(arr == 0)
+        except:
+            return False
 
     def clean(self):
         if Student.objects.exclude(pk=self.pk).filter(roll_no=self.roll_no).exists():
             raise ValidationError({'roll_no': 'A student with this roll number already exists.'})
 
-
     def save(self, *args, **kwargs):
+        # 1. Generate QR Code if missing
         if self.roll_no and not self.qr_code:
             qr_img = qrcode.make(self.roll_no)
             buffer = BytesIO()
             qr_img.save(buffer, format='PNG')
             self.qr_code.save(f'{self.roll_no}_qr.png', File(buffer), save=False)
+
+        # 2. Save first to ensure image is on disk
         super().save(*args, **kwargs)
+
+        # 3. Auto-generate Face Encoding if image exists but encoding is missing or default (zeros)
+        is_default_or_empty = False
+        if not self.face_encoding or self.face_encoding == b'':
+            is_default_or_empty = True
+        else:
+            try:
+                arr = np.frombuffer(self.face_encoding, dtype=np.float64)
+                if np.all(arr == 0):
+                    is_default_or_empty = True
+            except:
+                is_default_or_empty = True
+
+        if self.image and is_default_or_empty:
+            try:
+                from attendance.utils.face_utils import get_face_encoding
+                print(f"Auto-generating face encoding for {self.roll_no} from image...")
+                
+                # self.image.path is available because we called super().save() above
+                encoding = get_face_encoding(self.image.path)
+                
+                if encoding:
+                    self.face_encoding = encoding
+                    # Save only the face_encoding field to update the DB record
+                    super().save(update_fields=['face_encoding'])
+                    print(f"Successfully saved encoding for {self.roll_no}")
+                else:
+                    print(f"Warning: No face found in image for {self.roll_no}")
+            except Exception as e:
+                print(f"Error generating face encoding in save(): {e}")
 
     def __str__(self):
         return f"{self.roll_no} - {self.name}"
