@@ -1,7 +1,11 @@
 from django.contrib import admin
+from .models import Attendance
 
-# Register your models here.
-# from .utils.qr_utils import generate_qr_code
-# # After creating student object:
-# student.qr_code = generate_qr_code(student.roll_no)
-# student.save()
+class AttendanceAdmin(admin.ModelAdmin):
+    list_display = ('student', 'date', 'time', 'status')
+    list_filter = ('date', 'status')
+    search_fields = ('student__name', 'student__roll_no')
+    date_hierarchy = 'date'
+
+admin.site.register(Attendance, AttendanceAdmin)
+
