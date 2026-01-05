@@ -9,6 +9,8 @@ class RegisterStudent(APIView):
         image = request.FILES['image']
         path = f"media/{image.name}"
 
+
+
         with open(path, 'wb+') as f:
             for chunk in image.chunks():
                 f.write(chunk)
