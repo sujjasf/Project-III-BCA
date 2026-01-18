@@ -45,10 +45,10 @@ INSTALLED_APPS = [
     'attendance',
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True  # To allow React frontend requests
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:5173",
-# ]
+# CORS_ALLOW_ALL_ORIGINS = True  # To allow React frontend requests
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+]
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

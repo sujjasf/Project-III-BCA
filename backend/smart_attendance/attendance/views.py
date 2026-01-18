@@ -23,6 +23,12 @@ class MarkAttendance(APIView):
             print(f"Error: Student with roll_no {roll_no} not found")
             return Response({"error": "Student not found"}, status=404)
 
+        # Check if attendance is already marked for today before proceeding
+        today = timezone.now().date()
+        if Attendance.objects.filter(student=student, date=today).exists():
+            print("Attendance already marked today")
+            return Response({"message": "Attendance already marked today"})
+        
         if not student.face_encoding:
             print(f"Error: Student {student.roll_no} has no face encoding. Register via /register/ API or fix with management command.")
             return Response({"error": "Student has no face encoding. Register via /register/ API or fix with management command."}, status=400)

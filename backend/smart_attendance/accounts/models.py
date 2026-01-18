@@ -10,8 +10,16 @@ import numpy as np
 def student_image_upload_path(instance, filename):
     ext = filename.split('.')[-1]
     date_str = datetime.now().strftime('%Y%m%d')
-    safe_name = "".join([c for c in instance.name if c.isalnum() or c in (' ', '_')]).rstrip().replace(' ', '_')
-    filename = f"{safe_name}_{date_str}.{ext}"
+    # Safe roll number
+    safe_roll = "".join(
+        [c for c in instance.roll_no if c.isalnum() or c in ('_', '-')]
+    )
+    # Safe student name
+    safe_name = "".join(
+        [c for c in instance.name if c.isalnum() or c in (' ', '_')]
+    ).rstrip().replace(' ', '_')
+    # Final filename: ROLLNO_NAME_DATE.ext
+    filename = f"{safe_roll}_{safe_name}_{date_str}.{ext}"
     return os.path.join('students', filename)
 
 def default_encoding():

@@ -107,12 +107,12 @@ const FaceScanFlow = () => {
         <div>
           <h2>Scan QR Code</h2>
           <QrReader
-            delay={300}
+            delay={100}
             onError={console.error}
             onScan={(data) => {
               if (data) handleScan(data);
             }}
-            style={{ width: "300px" }}
+            style={{ width: "500px" }}
           />
           <button onClick={() => setStep("choose")}>Back</button>
         </div>
