@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import Webcam from "react-webcam";
 import QrReader from "react-qr-reader";
-
+// import AdminUI from './AdminUI';
 const API_URL = "http://127.0.0.1:8000/attendance/";
+const ADMIN_PIN = "1234";
 
 const FaceScanFlow = () => {
   const [step, setStep] = useState("choose");
@@ -10,10 +11,15 @@ const FaceScanFlow = () => {
   const [manualInput, setManualInput] = useState("");
   const [result, setResult] = useState(null);
   const webcamRef = useRef(null);
-
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pin, setPin] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [error, setError] = useState("");
+  
   // For continuous capture
   const [isCapturing, setIsCapturing] = useState(false);
   const processingRef = useRef(false); // avoid race conditions
+
 
   // Step 1: Scan QR
   const handleScan = (data) => {
@@ -78,7 +84,7 @@ const FaceScanFlow = () => {
               });
               setIsCapturing(false);
             }
-          } catch (err) {
+          } catch {
             setResult({ success: false, error: "Network error" });
             setIsCapturing(false);
           }
@@ -92,8 +98,45 @@ const FaceScanFlow = () => {
     };
   }, [step, rollNo, isCapturing]);
 
+  const handleExitClick = () => setShowPinModal(true);
+  
+  const handlePinSubmit = (e) => {
+    e.preventDefault();
+    if (pin === ADMIN_PIN) {
+      setIsAdmin(true);
+      setShowPinModal(false);
+      setError("");
+    } else {
+      setError("Incorrect Pin. Access Denied.");
+    }
+  };
+  
+  if (isAdmin) {
+    return <AdminUI />;
+  }
+  
   return (
     <div>
+      <button style={{ position: "absolute", top: 10, right: 10 }} onClick={handleExitClick}>
+        Exit
+      </button>
+      {showPinModal && (
+        <div className="modal">
+          <form onSubmit={handlePinSubmit}>
+            <label>
+              Enter Admin PIN:
+              <input
+                type="password"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                autoFocus
+              />
+            </label>
+            <button type="submit">Enter</button>
+            {error && <div style={{ color: "red" }}>{error}</div>}
+          </form>
+        </div>
+      )}
       {step === "choose" && (
         <div>
           <h2>Choose Roll No Input Method</h2>
@@ -207,5 +250,18 @@ const FaceScanFlow = () => {
     </div>
   );
 };
+
+function AdminUI() {
+  return (
+    <div>
+      <h2>Admin Panel</h2>
+      <button>Add Student</button>
+      <button>Manage Students</button>
+      <button>Manage Attendance</button>
+      {/* Add other admin features here */}
+    </div>
+  );
+}
+
 
 export default FaceScanFlow;

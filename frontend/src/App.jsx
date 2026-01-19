@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import './App.css'
 import FaceScan from './TestingTemp/FaceScan'
 import FaceScanFlow from './TestingTemp/FaceScanFlow'
 import ExitUi from './TestingTemp/ExitUi'
+import AttendancePage from './pages/AttendancePage'
 
 function App() {
 
@@ -10,7 +10,8 @@ function App() {
     <>
       {/* <FaceScan /> */}
       {/* <FaceScanFlow />*/}
-      <ExitUi />
+      {/* <ExitUi />*/}
+      <AttendancePage />
     </>
   )
 }
