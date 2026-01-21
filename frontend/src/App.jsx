@@ -1,12 +1,10 @@
-import { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import FaceScan from './TestingTemp/FaceScan'
+// import FaceScan from './TestingTemp/FaceScan'
 // import FaceScanFlow from './TestingTemp/FaceScanFlow'
 // import ExitUi from './FaceScanFlowTemp/ExitUi'
 import AttendancePage from './pages/AttendancePage'
 import HomePage from './pages/HomePage'
 import AdminDashboard  from './pages/AdminDashboard'
-import FaceScanFlow from './components/FaceScan/FaceScanFlow';
 
 function App() {
 

@@ -13,7 +13,7 @@ const AttendanceResult = ({ result, onStartOver, onRescanFace, onRescanQR, onRee
       <>
         <h3 className="text-red-600 text-xl font-bold">Face Scan Failed</h3>
         <p>{result.error}</p>
-        <button onClick={onRescanFace} className="btn btn-primary mt-2"></button>
+        <button onClick={onRescanFace} className="btn btn-primary mt-2">Rescan Face</button>
         <button onClick={onRescanQR} className="btn btn-secondary mt-2">Rescan QR</button>
         <button onClick={onReenterRoll} className="btn btn-secondary mt-2">Re-enter Roll No</button>
       </>

@@ -1,46 +1,250 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import ChooseMethod from "../components/common/ChooseMethod";
 import QRScanner from "../components/QR/QRScanner";
-import FaceScanFlow from "../components/FaceScan/FaceScanFlow";
+import ManualRollInput from "../components/common/ManualRollInput";
+import FaceScan from "../components/FaceScan/FaceScan";
+import AttendanceResult from "../components/Attendance/AttendanceResult";
 
 const AttendancePage = () => {
-  
+  const [step, setStep] = useState("choose");
+  const [rollNo, setRollNo] = useState("");
+  const [result, setResult] = useState(null);
+  const [autoScan, setAutoScan] = useState(true);
+  const [lastAttendance, setLastAttendance] = useState(null);
+
+  const handleChoose = (method) => setStep(method);
+
+  const handleQRScan = async (data) => {
+    if (data) {
+      setRollNo(data);
+
+      if (autoScan) {
+        // Check attendance status before proceeding to face scan
+        try {
+          const response = await fetch(
+            `http://127.0.0.1:8000/attendance/status?roll_no=${data}`,
+          );
+          const result = await response.json();
+          if (result.alreadyMarked) {
+            // Show message and reset for next scan
+            setLastAttendance({
+              success: false,
+              rollNo: data,
+              name: result.name || "",
+              error: "Attendance already done for today",
+            });
+            setTimeout(() => {
+              setRollNo("");
+              setResult(null);
+              setStep("qr");
+            }, 2000); // Show message for 2 seconds
+          } else {
+            setStep("face");
+          }
+        } catch (err) {
+          // Handle error, fallback to face scan or show error
+          {
+            console.log(err);
+          }
+          setStep("face");
+        }
+      } else {
+        setStep("face");
+      }
+    }
+  };
+
+  const handleManualSubmit = (roll) => {
+    setRollNo(roll);
+    if (autoScan) {
+      setStep("face"); // Immediately go to face scan
+    } else {
+      setStep("face");
+    }
+  };
+
+  const handleFaceScanResult = (scanResult) => {
+    setResult(scanResult);
+    setStep("result");
+  };
+
+  const handleRescanFace = () => {
+    setResult(null);
+    setStep("face");
+  };
+
+  const handleRescanQR = () => {
+    setResult(null);
+    setRollNo("");
+    setStep("qr");
+  };
+
+  const handleReenterRoll = () => {
+    setResult(null);
+    setRollNo("");
+    setStep("manual");
+  };
+
+  const handleStartOver = () => {
+    setStep("choose");
+    setRollNo("");
+    setResult(null);
+  };
+
+  // When autoScan is enabled, always start at QR scan
+  useEffect(() => {
+    if (autoScan) {
+      setStep("qr");
+      setRollNo("");
+      setResult(null);
+    } else {
+      setStep("choose");
+    }
+  }, [autoScan]);
+
+  // When result is set in auto mode, show it briefly then return to QR scan
+  useEffect(() => {
+    if (autoScan && result) {
+      setLastAttendance(result); // Save last successful attendance
+      const timer = setTimeout(() => {
+        setStep("qr");
+        setRollNo("");
+        setResult(null);
+      }, 2000); // Show result for 2 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [result, autoScan]);
+
   return (
-    // <FaceScanFlow />
-    <div>
-          {step === "choose" && <ChooseMethod ... />}
-          {step === "qr" && <QRScanner ... />}
-          {step === "manual" && <ManualRollInput ... />}
-          {step === "face" && <FaceScan ... />}
-          {result && <AttendanceResult ... />}
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
+      <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
+        {/* Auto Scan Toggle Button */}
+        <button
+          onClick={() => setAutoScan((prev) => !prev)}
+          className={`mb-4 px-4 py-2 rounded font-bold ${
+            autoScan ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700"
+          }`}
+        >
+          Auto Scan
+        </button>
+        <button
+          onClick={() => setStep("qr")}
+          className={`mb-4 px-4 py-2 rounded font-bold ${
+            autoScan ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700"
+          }`}
+        >
+          QR Scan
+        </button>
+        <button
+          onClick={() => {
+            setRollNo("");
+            setStep("manual");
+          }}
+          className={`mb-4 px-4 py-2 rounded font-bold ${
+            autoScan ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700"
+          }`}
+        >
+          Manual RollNo
+        </button>
+        {autoScan ? (
+          <>
+            {step === "qr" && (
+              <>
+                <QRScanner onScan={handleQRScan} />
+                {lastAttendance && (
+                  <div className="mt-4 p-2 bg-green-100 rounded">
+                    <strong>Last Attendance:</strong>
+                    <div>Name: {lastAttendance.name || "N/A"}</div>
+                    <div>Roll No: {lastAttendance.rollNo || "N/A"}</div>
+                    <div>
+                      Status: {lastAttendance.success ? "Success" : "Failed"}
+                    </div>
+                  </div>
+                )}
+                {lastAttendance && (
+                  <div
+                    className={`mt-4 p-2 rounded ${lastAttendance.success ? "bg-green-100" : "bg-yellow-100"}`}
+                  >
+                    {lastAttendance.error
+                      ? `Attendance already done for Roll No: ${lastAttendance.rollNo}`
+                      : `Attendance marked for ${lastAttendance.name} (${lastAttendance.rollNo})`}
+                  </div>
+                )}
+              </>
+            )}
+            {step === "manual" && (
+              <ManualRollInput onSubmit={handleManualSubmit} />
+            )}
+            {step === "face" && (
+              <>
+                <div className="flex gap-2 mb-4">
+                  <button
+                    className="px-3 py-1 bg-gray-200 rounded"
+                    onClick={() => {
+                      setStep("qr");
+                      setRollNo("");
+                    }}
+                  >
+                    Back to QR
+                  </button>
+                  <button
+                    className="px-3 py-1 bg-yellow-200 rounded"
+                    onClick={() => setAutoScan(false)}
+                  >
+                    Stop AutoScan
+                  </button>
+                </div>
+                <FaceScan
+                  rollNo={rollNo}
+                  onResult={handleFaceScanResult}
+                  autoScan={autoScan}
+                />
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            {step === "choose" && (
+              <div className="flex flex-col gap-2 mb-4">
+                <button
+                  className="px-4 py-2 bg-blue-500 text-white rounded"
+                  onClick={() => setStep("qr")}
+                >
+                  QR Scan Again
+                </button>
+                <button
+                  className="px-4 py-2 bg-green-500 text-white rounded"
+                  onClick={() => setStep("manual")}
+                >
+                  Manual Roll No Entry
+                </button>
+              </div>
+            )}
+            {step === "qr" && <QRScanner onScan={handleQRScan} />}
+            {step === "manual" && (
+              <ManualRollInput onSubmit={handleManualSubmit} />
+            )}
+            {step === "face" && (
+              <FaceScan
+                rollNo={rollNo}
+                onResult={handleFaceScanResult}
+                autoScan={autoScan}
+              />
+            )}
+            {step === "result" && (
+              <AttendanceResult
+                result={result}
+                onStartOver={handleStartOver}
+                onRescanFace={handleRescanFace}
+                onRescanQR={handleRescanQR}
+                onReenterRoll={handleReenterRoll}
+              />
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
-  
-  
-  
-  // const [rollNo, setRollNo] = useState("");
-  
-  // const handleScan = (data) => {
-  //   if (data) {
-  //     setRollNo(data);
-  //   }
-  // };
-  
-  // const handleError = (err) => {
-  //   console.error("QR Scan Error: ", err);
-  // };
-  
-  // return (
-  //   <div>
-  //     <h1 class="text-3xl font-bold underline">
-  //         Hello world!
-  //       </h1>
-  //     {!rollNo ? (
-  //       <QRScanner onScan={handleScan} onError={handleError} />
-  //     ) : (
-  //       <div>Scanned Roll No: {rollNo} </div>
-  //     )}
-  //   </div>
-  // );
 };
 
 export default AttendancePage;
