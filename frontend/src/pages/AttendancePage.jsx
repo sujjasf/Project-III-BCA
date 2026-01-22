@@ -19,19 +19,20 @@ const AttendancePage = () => {
       setRollNo(data);
 
       if (autoScan) {
-        // Check attendance status before proceeding to face scan
         try {
           const response = await fetch(
-            `http://127.0.0.1:8000/attendance/status?roll_no=${data}`,
+            `http://127.0.0.1:8000/attendance/status?roll_no=${encodeURIComponent(
+              data
+            )}`
           );
-          const result = await response.json();
-          if (result.alreadyMarked) {
+          const status = await response.json();
+          if (status.alreadyMarked) {
             // Show message and reset for next scan
             setLastAttendance({
               success: false,
               rollNo: data,
-              name: result.name || "",
-              error: "Attendance already done for today",
+              name: status.name || "",
+              error: true,
             });
             setTimeout(() => {
               setRollNo("");
@@ -42,10 +43,8 @@ const AttendancePage = () => {
             setStep("face");
           }
         } catch (err) {
-          // Handle error, fallback to face scan or show error
-          {
-            console.log(err);
-          }
+          // On error, fall back to face scan
+          console.log(err);
           setStep("face");
         }
       } else {
@@ -57,7 +56,34 @@ const AttendancePage = () => {
   const handleManualSubmit = (roll) => {
     setRollNo(roll);
     if (autoScan) {
-      setStep("face"); // Immediately go to face scan
+      (async () => {
+        try {
+          const response = await fetch(
+            `http://127.0.0.1:8000/attendance/status?roll_no=${encodeURIComponent(
+              roll
+            )}`
+          );
+          const status = await response.json();
+          if (status.alreadyMarked) {
+            setLastAttendance({
+              success: false,
+              rollNo: roll,
+              name: status.name || "",
+              error: true,
+            });
+            setTimeout(() => {
+              setRollNo("");
+              setResult(null);
+              setStep("qr");
+            }, 2000);
+            return;
+          }
+          setStep("face");
+        } catch (err) {
+          console.log(err);
+          setStep("face");
+        }
+      })();
     } else {
       setStep("face");
     }
@@ -68,28 +94,28 @@ const AttendancePage = () => {
     setStep("result");
   };
 
-  const handleRescanFace = () => {
-    setResult(null);
-    setStep("face");
-  };
+  // const handleRescanFace = () => {
+  //   setResult(null);
+  //   setStep("face");
+  // };
 
-  const handleRescanQR = () => {
-    setResult(null);
-    setRollNo("");
-    setStep("qr");
-  };
+  // const handleRescanQR = () => {
+  //   setResult(null);
+  //   setRollNo("");
+  //   setStep("qr");
+  // };
 
-  const handleReenterRoll = () => {
-    setResult(null);
-    setRollNo("");
-    setStep("manual");
-  };
+  // const handleReenterRoll = () => {
+  //   setResult(null);
+  //   setRollNo("");
+  //   setStep("manual");
+  // };
 
-  const handleStartOver = () => {
-    setStep("choose");
-    setRollNo("");
-    setResult(null);
-  };
+  // const handleStartOver = () => {
+  //   setStep("choose");
+  //   setRollNo("");
+  //   setResult(null);
+  // };
 
   // When autoScan is enabled, always start at QR scan
   useEffect(() => {
@@ -136,6 +162,7 @@ const AttendancePage = () => {
           QR Scan
         </button>
         <button
+          videoConstraints={{ facingMode: "user" }}
           onClick={() => {
             setRollNo("");
             setStep("manual");
@@ -194,11 +221,13 @@ const AttendancePage = () => {
                     Stop AutoScan
                   </button>
                 </div>
-                <FaceScan
-                  rollNo={rollNo}
-                  onResult={handleFaceScanResult}
-                  autoScan={autoScan}
-                />
+                {rollNo ? (
+                  <FaceScan
+                    rollNo={rollNo}
+                    onResult={handleFaceScanResult}
+                    autoScan={autoScan}
+                  />
+                ) : null}
               </>
             )}
           </>

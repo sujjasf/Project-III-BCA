@@ -11,6 +11,19 @@ from django.conf import settings
 import logging
 logger = logging.getLogger(__name__)
 
+class AttendanceStatus(APIView):
+    def get(self, request):
+        roll_no = request.query_params.get("roll_no")
+        if not roll_no:
+            return Response({"error": "roll_no required"}, status=400)
+        try:
+            student = Student.objects.get(roll_no=roll_no)
+        except Student.DoesNotExist:
+            return Response({"error": "Student not found"}, status=404)
+        today = timezone.now().date()
+        exists = Attendance.objects.filter(student=student, date=today).exists()
+        return Response({"alreadyMarked": exists, "roll_no": roll_no, "name": student.name if exists else ""})
+
 class MarkAttendance(APIView):
     def post(self, request):
         print("Received attendance request")

@@ -9,7 +9,7 @@ const QRScanner = ({ onScan, onError }) => {
         delay={20}
         onError={onError}
         onScan={onScan}
-        style={{ width: "100%" }}
+        style={{ width: "100%", transform: "scaleX(-1)" }}
       />
       <p>Align the QR code within the frame.</p>
     </div>

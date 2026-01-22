@@ -4,87 +4,128 @@ import axios from "axios";
 
 const FaceScan = ({ rollNo, onResult, autoScan = false }) => {
   const webcamRef = useRef(null);
+  const processingRef = useRef(false);
+  const mountedRef = useRef(true);
   const [isCapturing, setIsCapturing] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Automatically start capturing in autoScan mode
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   useEffect(() => {
     if (autoScan && rollNo) {
       setIsCapturing(true);
-      console.log(autoScan, rollNo);
     }
-    console.log(autoScan, rollNo);
   }, [autoScan, rollNo]);
 
   useEffect(() => {
     if (!isCapturing) return;
-    let intervalId = setInterval(async () => {
+    const intervalId = setInterval(async () => {
+      if (!mountedRef.current) return;
+      if (processingRef.current) return;
       if (!webcamRef.current) return;
       const imageSrc = webcamRef.current.getScreenshot();
       if (!imageSrc) return;
+      processingRef.current = true;
+      setLoading(true);
       try {
-        setLoading(true);
         const blob = await (await fetch(imageSrc)).blob();
+        if (!rollNo) {
+          console.error("FaceScan: missing rollNo, skipping POST");
+          processingRef.current = false;
+          setLoading(false);
+          return;
+        }
         const formData = new FormData();
         formData.append("roll_no", rollNo);
         formData.append("image", blob, "face.jpg");
-        const response = await fetch("http://127.0.0.1:8000/attendance/", {
-          method: "POST",
-          body: formData,
-        });
-        const data = await response.json();
-        // Success -> stop scanning and report
-        if (data.message && data.message.startsWith("Attendance marked")) {
-          setIsCapturing(false);
-          onResult({
-            success: true,
-            name: data.message.split("for ")[1],
-            rollNo,
-          });
+
+        const resp = await axios.post(
+          "http://127.0.0.1:8000/attendance/",
+          formData,
+          {
+            headers: { Accept: "application/json" },
+            validateStatus: () => true, // handle non-2xx manually
+          },
+        );
+
+        const data = resp.data;
+        if (resp.status < 200 || resp.status >= 300) {
+          console.error("Attendance API error", resp.status, data);
         }
-        // Already marked -> stop scanning and report
-        else if (
-          data.message &&
-          data.message.startsWith("Attendance already marked")
-        ) {
-          setIsCapturing(false);
-          onResult({
-            success: false,
-            error: data.message,
-          });
-        }
-        // No face detected -> keep scanning (transient)
-        else if (data.error === "No face detected in image") {
-          // intentionally do nothing so scanning continues
-        }
-        // Other responses -> in autoScan mode keep scanning, otherwise stop and report
-        else {
+
+        if (resp.status >= 200 && resp.status < 300) {
+          if (data?.message && data.message.startsWith("Attendance marked")) {
+            if (!mountedRef.current) return;
+            setIsCapturing(false);
+            onResult({
+              success: true,
+              name: data.message.split("for ")[1],
+              rollNo,
+            });
+            return;
+          }
+          if (
+            data?.message &&
+            data.message.startsWith("Attendance already marked")
+          ) {
+            if (!mountedRef.current) return;
+            setIsCapturing(false);
+            onResult({ success: false, error: data.message, rollNo });
+            return;
+          }
+          if (data?.error === "No face detected in image") {
+            // transient
+            return;
+          }
           if (!autoScan) {
             setIsCapturing(false);
             onResult({
               success: false,
-              error: data.error || data.message,
+              error: data?.error || data?.message || "Unknown response",
             });
           } else {
-            // Log and continue scanning in auto mode
-            console.warn("FaceScan (auto): non-fatal response:", data);
+            console.warn("FaceScan (auto): unexpected 2xx payload", data);
+          }
+        } else {
+          // non-2xx
+          const errMsg =
+            data?.error ||
+            data?.message ||
+            resp.statusText ||
+            `HTTP ${resp.status}`;
+          if (errMsg === "No face detected in image") {
+            // transient
+            return;
+          }
+          if (!autoScan) {
+            setIsCapturing(false);
+            onResult({ success: false, error: errMsg });
+          } else {
+            console.warn(
+              "FaceScan (auto): non-2xx response",
+              resp.status,
+              errMsg,
+            );
           }
         }
       } catch (err) {
-        // Network errors: in non-auto mode report and stop; in auto mode, log and continue
         if (!autoScan) {
           setIsCapturing(false);
-          onResult({
-            success: false,
-            error: "Network error",
-          });
+          onResult({ success: false, error: "Network error" });
         } else {
           console.warn("FaceScan (auto) network error:", err);
         }
       } finally {
-        setLoading(false);
+        processingRef.current = false;
+        if (mountedRef.current) setLoading(false);
       }
     }, 1000);
+
     return () => clearInterval(intervalId);
   }, [isCapturing, rollNo, onResult, autoScan]);
 
@@ -100,9 +141,9 @@ const FaceScan = ({ rollNo, onResult, autoScan = false }) => {
         width={320}
         height={240}
         videoConstraints={{ facingMode: "user" }}
+        style={{ width: "100%", transform: "scaleX(-1)"}}
         className="rounded-lg shadow mb-4"
       />
-      {/* Only show button if NOT autoScan */}
       {!isCapturing && !autoScan && (
         <button
           className="btn btn-primary mb-4"

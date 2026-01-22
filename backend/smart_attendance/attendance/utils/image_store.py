@@ -1,6 +1,5 @@
 import os
 import shutil
-from datetime import timedelta
 from django.utils import timezone
 from django.conf import settings
 
@@ -21,10 +20,14 @@ def _ensure_dir(path):
     return path
 
 def get_weekday_folder_for_date(dt=None):
+    """
+    Return folder under MEDIA_ROOT/temp/<weekday_folder>
+    e.g. .../media/temp/5thursday
+    """
     dt = dt or timezone.localdate()
     weekday_name = dt.strftime("%A")
     folder_name = WEEKDAY_FOLDERS.get(weekday_name, weekday_name.lower())
-    return os.path.join(settings.MEDIA_ROOT, folder_name)
+    return os.path.join(settings.MEDIA_ROOT, 'temp', folder_name)
 
 def _find_temp_image_for_roll(roll_no):
     """Search MEDIA_ROOT/temp and its subfolders for a file named <roll_no>.jpg.
@@ -37,7 +40,7 @@ def _find_temp_image_for_roll(roll_no):
     if os.path.isfile(direct):
         candidates.append(direct)
 
-    # search immediate subdirectories (e.g. media/temp/5thrusday)
+    # search subdirectories (e.g. media/temp/5thrusday)
     if os.path.isdir(temp_root):
         for entry in os.listdir(temp_root):
             sub = os.path.join(temp_root, entry)
@@ -54,15 +57,14 @@ def _find_temp_image_for_roll(roll_no):
     return candidates[0]
 
 
-def save_attendance_image_from_path(src_path, roll_no):
+def save_attendance_image_from_path(src_path, roll_no, move_src=False):
     """
-    Copy src_path into media/<weekday_folder>/<roll_no>.jpg (overwrite)
-    and also save an archived dated copy: <roll_no>_YYYY-MM-DD.jpg.
-    If src_path does not exist or is None, search under MEDIA_ROOT/temp
-    and its subfolders (e.g. media/temp/5thrusday) for <roll_no>.jpg.
-    Then cleanup archived files older than RETENTION_DAYS.
+    Save a single canonical image at MEDIA_ROOT/temp/<weekday_folder>/<roll_no>.jpg.
+    - If src_path missing, searches MEDIA_ROOT/temp and subfolders for <roll_no>.jpg.
+    - If src_path already equals destination, does nothing.
+    - By default copies; set move_src=True to move the file (removes temp).
+    - Removes other temp duplicates for the same roll after saving.
     """
-    # if src_path is missing or doesn't exist, try to find it in temp folders
     if not src_path or not os.path.isfile(src_path):
         found = _find_temp_image_for_roll(roll_no)
         if found:
@@ -71,34 +73,29 @@ def save_attendance_image_from_path(src_path, roll_no):
             raise FileNotFoundError(f"No temp image found for roll {roll_no}")
 
     dst_dir = _ensure_dir(get_weekday_folder_for_date())
-    today = timezone.localdate().isoformat()
     main_dst = os.path.join(dst_dir, f"{roll_no}.jpg")
-    archive_dst = os.path.join(dst_dir, f"{roll_no}_{today}.jpg")
 
-    # Copy / overwrite main file
-    shutil.copy2(src_path, main_dst)
-    # Also keep a dated archive for retention / debugging
-    shutil.copy2(src_path, archive_dst)
+    # If already at destination, return immediately
+    if os.path.abspath(src_path) == os.path.abspath(main_dst):
+        return main_dst
 
-    # Cleanup: remove archived files older than RETENTION_DAYS
-    now_ts = timezone.now().timestamp()
-    retention_seconds = RETENTION_DAYS * 86400
-    for fn in os.listdir(dst_dir):
-        fp = os.path.join(dst_dir, fn)
-        if not os.path.isfile(fp):
-            continue
-        # skip current main file
-        if os.path.abspath(fp) == os.path.abspath(main_dst):
-            continue
-        try:
-            mtime = os.path.getmtime(fp)
-            if (now_ts - mtime) > retention_seconds:
-                try:
-                    os.remove(fp)
-                except Exception:
-                    pass
-        except Exception:
-            # ignore errors getting mtime
-            pass
+    # Copy or move single canonical file (no dated archive)
+    if move_src:
+        shutil.move(src_path, main_dst)
+    else:
+        shutil.copy2(src_path, main_dst)
+
+    # Remove other temp duplicates (keep only the saved canonical file)
+    temp_root = os.path.join(settings.MEDIA_ROOT, 'temp')
+    if os.path.isdir(temp_root):
+        for root, _, files in os.walk(temp_root):
+            for fn in files:
+                if fn.lower() == f"{roll_no}.jpg":
+                    fp = os.path.abspath(os.path.join(root, fn))
+                    try:
+                        if fp != os.path.abspath(main_dst):
+                            os.remove(fp)
+                    except Exception:
+                        pass
 
     return main_dst
