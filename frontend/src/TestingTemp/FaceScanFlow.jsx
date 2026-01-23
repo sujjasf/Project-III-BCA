@@ -15,11 +15,10 @@ const FaceScanFlow = () => {
   const [pin, setPin] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState("");
-  
+
   // For continuous capture
   const [isCapturing, setIsCapturing] = useState(false);
   const processingRef = useRef(false); // avoid race conditions
-
 
   // Step 1: Scan QR
   const handleScan = (data) => {
@@ -99,7 +98,7 @@ const FaceScanFlow = () => {
   }, [step, rollNo, isCapturing]);
 
   const handleExitClick = () => setShowPinModal(true);
-  
+
   const handlePinSubmit = (e) => {
     e.preventDefault();
     if (pin === ADMIN_PIN) {
@@ -110,14 +109,17 @@ const FaceScanFlow = () => {
       setError("Incorrect Pin. Access Denied.");
     }
   };
-  
+
   if (isAdmin) {
     return <AdminUI />;
   }
-  
+
   return (
     <div>
-      <button style={{ position: "absolute", top: 10, right: 10 }} onClick={handleExitClick}>
+      <button
+        style={{ position: "absolute", top: 10, right: 10 }}
+        onClick={handleExitClick}
+      >
         Exit
       </button>
       {showPinModal && (
@@ -185,7 +187,7 @@ const FaceScanFlow = () => {
             screenshotFormat="image/jpeg"
             width={320}
             height={240}
-            videoConstraints={{ facingMode: "user" }}
+            videoconstraints={{ facingMode: "user" }}
           />
           <br />
           <p>
@@ -217,6 +219,7 @@ const FaceScanFlow = () => {
               <h3>Face scan failed!</h3>
               <p>{result.error}</p>
               <button
+                className="px-4 py-2 bg-green-500 text-white rounded"
                 onClick={() => {
                   setResult(null);
                   setStep("face");
@@ -226,6 +229,7 @@ const FaceScanFlow = () => {
                 Rescan Face
               </button>
               <button
+                className="px-4 py-2 bg-green-500 text-white rounded"
                 onClick={() => {
                   setResult(null);
                   setStep("qr");
@@ -235,6 +239,7 @@ const FaceScanFlow = () => {
                 Rescan QR
               </button>
               <button
+                className="px-4 py-2 bg-green-500 text-white rounded"
                 onClick={() => {
                   setResult(null);
                   setStep("manual");
@@ -262,6 +267,5 @@ function AdminUI() {
     </div>
   );
 }
-
 
 export default FaceScanFlow;

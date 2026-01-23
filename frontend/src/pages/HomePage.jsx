@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import ChainedSelects from '../components/Admin/ChainedSelects'
 
 const KpiCard = ({ title, value, delta }) => (
   <div style={{ padding: 12, borderRadius: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.1)", background: "#fff", minWidth: 160 }}>
@@ -112,6 +113,10 @@ function HomePage() {
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <ChainedSelects onChange={({deptId, batchId, classGroupId})=>{
+            // optional: fetch students for the selected class/batch
+            // e.g. fetch(`/api/students?class=${classGroupId}&batch=${batchId}`)...
+          }} />
           <label style={{ fontSize: 13 }}><input type="checkbox" checked={showAbsentOnly} onChange={e => { setShowAbsentOnly(e.target.checked); if (e.target.checked) setShowLateOnly(false); }} /> Show absent</label>
           <label style={{ fontSize: 13 }}><input type="checkbox" checked={showLateOnly} onChange={e => { setShowLateOnly(e.target.checked); if (e.target.checked) setShowAbsentOnly(false); }} /> Show late</label>
           <input placeholder="Search name or class" value={search} onChange={e => setSearch(e.target.value)} style={{ padding: "6px 8px", borderRadius: 6, border: "1px solid #e5e7eb" }} />

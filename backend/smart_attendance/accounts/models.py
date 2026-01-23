@@ -26,9 +26,33 @@ def default_encoding():
     # Return a 128-dim zero vector as bytes (1024 bytes)
     return np.zeros(128, dtype=np.float64).tobytes()
 
+class Department(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.name
+
+class Batch(models.Model):
+    name = models.CharField(max_length=50, help_text="e.g. batch2080")
+    start_year = models.IntegerField(null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+class ClassGroup(models.Model):
+    name = models.CharField(max_length=50, help_text="e.g. 10A or BCA-1")
+    department = models.ForeignKey(Department, null=True, blank=True, on_delete=models.SET_NULL)
+    batch = models.ForeignKey(Batch, null=True, blank=True, on_delete=models.SET_NULL)
+
+    def __str__(self):
+        return self.name
+
 class Student(models.Model):
     roll_no = models.CharField(max_length=20, unique=True)
     name = models.CharField(max_length=100)
+    department = models.ForeignKey(Department, null=True, blank=True, on_delete=models.SET_NULL)
+    batch = models.ForeignKey(Batch, null=True, blank=True, on_delete=models.SET_NULL)
+    class_group = models.ForeignKey(ClassGroup, null=True, blank=True, on_delete=models.SET_NULL)
     # Default to 128-dim zero vector
     face_encoding = models.BinaryField(default=default_encoding, null=True, blank=True)
     image = models.ImageField(upload_to=student_image_upload_path, null=True, blank=True)

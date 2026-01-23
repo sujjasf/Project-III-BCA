@@ -5,6 +5,12 @@ from accounts.models import Student
 from .models import Attendance
 from django.utils import timezone
 import os
+from django.db.models import Count
+from django.utils import timezone
+from datetime import timedelta, date
+from accounts.models import Student
+import openpyxl
+from django.http import HttpResponse
 
 from .utils.image_store import save_attendance_image_from_path
 from django.conf import settings
@@ -22,7 +28,22 @@ class AttendanceStatus(APIView):
             return Response({"error": "Student not found"}, status=404)
         today = timezone.now().date()
         exists = Attendance.objects.filter(student=student, date=today).exists()
-        return Response({"alreadyMarked": exists, "roll_no": roll_no, "name": student.name if exists else ""})
+        # if already marked, include attendance time
+        attendance_time = None
+        if exists:
+            att = Attendance.objects.filter(student=student, date=today).order_by("-time").first()
+            if att:
+                attendance_time = att.time.isoformat()
+
+        return Response({
+            "alreadyMarked": exists,
+            "roll_no": roll_no,
+            "name": student.name,
+            "class": student.class_group.name if student.class_group else None,
+            "batch": student.batch.name if student.batch else None,
+            "department": student.department.name if student.department else None,
+            "time": attendance_time
+        })
 
 class MarkAttendance(APIView):
     def post(self, request):
@@ -43,6 +64,18 @@ class MarkAttendance(APIView):
 
         # Check if attendance is already marked for today before proceeding
         today = timezone.now().date()
+        existing_att = Attendance.objects.filter(student=student, date=today).order_by("-time").first()
+        if existing_att:
+            print("Attendance already marked today")
+            return Response({
+                "message": "Attendance already marked today",
+                "name": student.name,
+                "roll_no": student.roll_no,
+                "class": student.class_group.name if student.class_group else None,
+                "batch": student.batch.name if student.batch else None,
+                "department": student.department.name if student.department else None,
+                "time": existing_att.time.isoformat() if existing_att else None
+            })
         if Attendance.objects.filter(student=student, date=today).exists():
             print("Attendance already marked today")
             return Response({"message": "Attendance already marked today"})
@@ -93,7 +126,15 @@ class MarkAttendance(APIView):
                     pass
 
             print(f"Attendance marked for {student.name}")
-            return Response({"message": f"Attendance marked for {student.name}"})
+            return Response({
+                "message": f"Attendance marked for {student.name}",
+                "name": student.name,
+                "roll_no": student.roll_no,
+                "class": student.class_group.name if student.class_group else None,
+                "batch": student.batch.name if student.batch else None,
+                "department": student.department.name if student.department else None,
+                "time": attendance.time.isoformat() if attendance else None
+            })
         else:
             print("Error: Face did not match")
             try:
@@ -102,3 +143,49 @@ class MarkAttendance(APIView):
             except Exception:
                 pass
             return Response({"error": "Face did not match"}, status=400)
+
+
+class MostAbsentAPIView(APIView):
+    def get(self, request):
+        days = int(request.query_params.get("days", 7))
+        class_id = request.query_params.get("class_id")  # optional filter
+        end = timezone.localdate()
+        start = end - timedelta(days=days-1)
+        # count present per student in range:
+        present_qs = Attendance.objects.filter(date__range=(start, end))
+        if class_id:
+            present_qs = present_qs.filter(student__class_group_id=class_id)
+        present_counts = present_qs.values('student_id', 'student__roll_no', 'student__name', 'student__class_group__name')\
+                                   .annotate(presents=Count('id'))
+        # build dict by student
+        presents_map = {p['student_id']: p for p in present_counts}
+        # students to evaluate
+        students = Student.objects.all()
+        if class_id:
+            students = students.filter(class_group_id=class_id)
+        total_days = days
+        result = []
+        for s in students:
+            p = presents_map.get(s.id)
+            presents = p['presents'] if p else 0
+            absences = total_days - presents
+            result.append({"roll_no": s.roll_no, "name": s.name, "class": s.class_group and s.class_group.name, "presents": presents, "absences": absences})
+        # sort by absences desc
+        result.sort(key=lambda x: x['absences'], reverse=True)
+        return Response({"period_days": total_days, "start": start, "end": end, "data": result})
+
+class ExportAttendanceExcelAPIView(APIView):
+    def get(self, request):
+        days = int(request.query_params.get("days", 7))
+        end = timezone.localdate()
+        start = end - timedelta(days=days-1)
+        qs = Attendance.objects.filter(date__range=(start, end)).select_related('student','student__class_group')
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(["Date","Roll No","Name","Class","Present"])
+        for a in qs.order_by('date'):
+            ws.append([a.date.isoformat(), a.student.roll_no, a.student.name, a.student.class_group and a.student.class_group.name or "", bool(a.status)])
+        resp = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        resp['Content-Disposition'] = f'attachment; filename=attendance_{start}_{end}.xlsx'
+        wb.save(resp)
+        return resp

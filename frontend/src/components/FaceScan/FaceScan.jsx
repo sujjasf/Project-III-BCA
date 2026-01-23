@@ -64,8 +64,12 @@ const FaceScan = ({ rollNo, onResult, autoScan = false }) => {
             setIsCapturing(false);
             onResult({
               success: true,
-              name: data.message.split("for ")[1],
-              rollNo,
+              name: data.name || data.message.split("for ")[1] || "",
+              rollNo: data.roll_no || rollNo,
+              class: data.class || null,
+              batch: data.batch || null,
+              department: data.department || null,
+              time: data.time || null,
             });
             return;
           }
@@ -75,7 +79,16 @@ const FaceScan = ({ rollNo, onResult, autoScan = false }) => {
           ) {
             if (!mountedRef.current) return;
             setIsCapturing(false);
-            onResult({ success: false, error: data.message, rollNo });
+            onResult({
+              success: false,
+              error: data.message,
+              name: data.name || "",
+              rollNo: data.roll_no || rollNo,
+              class: data.class || null,
+              batch: data.batch || null,
+              department: data.department || null,
+              time: data.time || null,
+            });
             return;
           }
           if (data?.error === "No face detected in image") {
@@ -140,7 +153,7 @@ const FaceScan = ({ rollNo, onResult, autoScan = false }) => {
         screenshotFormat="image/jpeg"
         width={320}
         height={240}
-        videoConstraints={{ facingMode: "user" }}
+        videoconstraints={{ facingMode: "user" }}
         style={{ width: "100%", transform: "scaleX(-1)"}}
         className="rounded-lg shadow mb-4"
       />

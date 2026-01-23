@@ -22,8 +22,8 @@ const AttendancePage = () => {
         try {
           const response = await fetch(
             `http://127.0.0.1:8000/attendance/status?roll_no=${encodeURIComponent(
-              data
-            )}`
+              data,
+            )}`,
           );
           const status = await response.json();
           if (status.alreadyMarked) {
@@ -60,8 +60,8 @@ const AttendancePage = () => {
         try {
           const response = await fetch(
             `http://127.0.0.1:8000/attendance/status?roll_no=${encodeURIComponent(
-              roll
-            )}`
+              roll,
+            )}`,
           );
           const status = await response.json();
           if (status.alreadyMarked) {
@@ -80,7 +80,7 @@ const AttendancePage = () => {
           }
           setStep("face");
         } catch (err) {
-          console.log(err);
+          // console.log(err);
           setStep("face");
         }
       })();
@@ -94,28 +94,28 @@ const AttendancePage = () => {
     setStep("result");
   };
 
-  // const handleRescanFace = () => {
-  //   setResult(null);
-  //   setStep("face");
-  // };
+  const handleRescanFace = () => {
+    setResult(null);
+    setStep("face");
+  };
 
-  // const handleRescanQR = () => {
-  //   setResult(null);
-  //   setRollNo("");
-  //   setStep("qr");
-  // };
+  const handleRescanQR = () => {
+    setResult(null);
+    setRollNo("");
+    setStep("qr");
+  };
 
-  // const handleReenterRoll = () => {
-  //   setResult(null);
-  //   setRollNo("");
-  //   setStep("manual");
-  // };
+  const handleReenterRoll = () => {
+    setResult(null);
+    setRollNo("");
+    setStep("manual");
+  };
 
-  // const handleStartOver = () => {
-  //   setStep("choose");
-  //   setRollNo("");
-  //   setResult(null);
-  // };
+  const handleStartOver = () => {
+    setStep("choose");
+    setRollNo("");
+    setResult(null);
+  };
 
   // When autoScan is enabled, always start at QR scan
   useEffect(() => {
@@ -162,7 +162,7 @@ const AttendancePage = () => {
           QR Scan
         </button>
         <button
-          videoConstraints={{ facingMode: "user" }}
+          videoconstraints={{ facingMode: "user" }}
           onClick={() => {
             setRollNo("");
             setStep("manual");
@@ -182,7 +182,38 @@ const AttendancePage = () => {
                   <div className="mt-4 p-2 bg-green-100 rounded">
                     <strong>Last Attendance:</strong>
                     <div>Name: {lastAttendance.name || "N/A"}</div>
-                    <div>Roll No: {lastAttendance.rollNo || "N/A"}</div>
+                    <div>
+                      Roll No:{" "}
+                      {lastAttendance.rollNo ||
+                        lastAttendance.rollNoScanned ||
+                        "N/A"}
+                    </div>
+                    <div>
+                      Class:{" "}
+                      {lastAttendance.class ||
+                        lastAttendance.classGroup ||
+                        lastAttendance.className ||
+                        "N/A"}
+                    </div>
+                    <div>
+                      Batch:{" "}
+                      {lastAttendance.batch ||
+                        lastAttendance.batchYear ||
+                        "N/A"}
+                    </div>
+                    <div>
+                      Department:{" "}
+                      {lastAttendance.department ||
+                        lastAttendance.departmentName ||
+                        "N/A"}
+                    </div>
+                    <div>
+                      Time:{" "}
+                      {lastAttendance.timeIn ||
+                        lastAttendance.time ||
+                        lastAttendance.timestamp ||
+                        "N/A"}
+                    </div>
                     <div>
                       Status: {lastAttendance.success ? "Success" : "Failed"}
                     </div>
@@ -193,8 +224,8 @@ const AttendancePage = () => {
                     className={`mt-4 p-2 rounded ${lastAttendance.success ? "bg-green-100" : "bg-yellow-100"}`}
                   >
                     {lastAttendance.error
-                      ? `Attendance already done for Roll No: ${lastAttendance.rollNo}`
-                      : `Attendance marked for ${lastAttendance.name} (${lastAttendance.rollNo})`}
+                      ? `Attendance already done for Roll No: ${lastAttendance.rollNo || lastAttendance.rollNoScanned || ""}`
+                      : `Attendance marked for ${lastAttendance.name || ""} (${lastAttendance.rollNo || ""}) - ${lastAttendance.class || lastAttendance.classGroup || ""} / ${lastAttendance.batch || lastAttendance.batchYear || ""}`}
                   </div>
                 )}
               </>

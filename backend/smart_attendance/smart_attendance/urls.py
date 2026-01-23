@@ -16,11 +16,14 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from accounts.views import RegisterStudent
+from accounts.views import RegisterStudent, departments_list, department_batches, batch_classgroups
 from attendance.views import MarkAttendance
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('register/', RegisterStudent.as_view()),
+    path('api/departments/', departments_list),
+    path('api/departments/<int:dept_id>/batches/', department_batches),
+    path('api/batches/<int:batch_id>/classgroups/', batch_classgroups),
     path('attendance/', MarkAttendance.as_view()),
 ]
