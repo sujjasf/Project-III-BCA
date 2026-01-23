@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import axios from 'axios'
 
+const API_BASE = import.meta.env.VITE_API_BASE;
+
 export default function ChainedSelects({ onChange }) {
   const [departments, setDepartments] = useState([])
   const [batches, setBatches] = useState([])
@@ -11,7 +13,15 @@ export default function ChainedSelects({ onChange }) {
   const [classGroupId, setClassGroupId] = useState('')
 
   useEffect(() => {
-    axios.get('/api/departments/').then(r => setDepartments(r.data)).catch(() => setDepartments([]))
+    let mounted = true
+    axios.get(`${API_BASE}/api/departments/`)
+      .then(r => {
+        if (!mounted) return
+        // ensure ids are strings for select values
+        setDepartments((r.data || []).map(d => ({ ...d, id: String(d.id) })))
+      })
+      .catch(() => setDepartments([]))
+    return () => { mounted = false }
   }, [])
 
   useEffect(() => {
@@ -20,11 +30,17 @@ export default function ChainedSelects({ onChange }) {
       setBatchId('')
       return
     }
-    // fetch batches related to department
-    axios.get(`/api/departments/${deptId}/batches/`).then(r => setBatches(r.data)).catch(() => setBatches([]))
+    let mounted = true
+    axios.get(`${API_BASE}/api/departments/${deptId}/batches/`)
+      .then(r => {
+        if (!mounted) return
+        setBatches((r.data || []).map(b => ({ ...b, id: String(b.id) })))
+      })
+      .catch(() => setBatches([]))
     setBatchId('')
     setClassGroups([])
     setClassGroupId('')
+    return () => { mounted = false }
   }, [deptId])
 
   useEffect(() => {
@@ -33,8 +49,15 @@ export default function ChainedSelects({ onChange }) {
       setClassGroupId('')
       return
     }
-    axios.get(`/api/batches/${batchId}/classgroups/`).then(r => setClassGroups(r.data)).catch(() => setClassGroups([]))
+    let mounted = true
+    axios.get(`${API_BASE}/api/batches/${batchId}/classgroups/`)
+      .then(r => {
+        if (!mounted) return
+        setClassGroups((r.data || []).map(c => ({ ...c, id: String(c.id) })))
+      })
+      .catch(() => setClassGroups([]))
     setClassGroupId('')
+    return () => { mounted = false }
   }, [batchId])
 
   useEffect(() => {
