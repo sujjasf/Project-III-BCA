@@ -3,6 +3,7 @@ import ChainedSelects from "../components/Admin/StudentManagement/ChainedSelects
 import Sidebar from "../components/Admin/Sidebar";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { formatNPTOrDash } from "../utils/helpers";
 
 const API_BASE = import.meta.env.VITE_API_BASE;
 
@@ -123,9 +124,9 @@ function HomePage() {
       mounted = false;
     };
   }, []);
-  useEffect(() => {
-    console.log("Attendance Status Updated:", showAttendanceStatus, students);
-  }, [showAttendanceStatus, students]);
+  // useEffect(() => {
+  //   console.log("Attendance Status Updated:", showAttendanceStatus, students);
+  // }, [showAttendanceStatus, students]);
 
   useEffect(() => {
     setLoading(true);
@@ -137,39 +138,6 @@ function HomePage() {
         activeStudents: 312,
         scansPerHour: [5, 12, 20, 14, 8, 6, 3],
       });
-
-      // setStudents([
-      //   {
-      //     id: 1,
-      //     name: "Aisha Khan",
-      //     class: "10A",
-      //     status: "on_time",
-      //     timeIn: "08:45",
-      //   },
-      //   {
-      //     id: 2,
-      //     name: "Ravi Patel",
-      //     class: "10B",
-      //     status: "late",
-      //     timeIn: "09:20",
-      //   },
-      //   { id: 3, name: "Maya Singh", class: "10A", status: "absent" },
-      //   {
-      //     id: 4,
-      //     name: "Arjun Rao",
-      //     class: "10C",
-      //     status: "on_time",
-      //     timeIn: "08:50",
-      //   },
-      //   {
-      //     id: 5,
-      //     name: "Zara Ali",
-      //     class: "10B",
-      //     status: "late",
-      //     timeIn: "09:05",
-      //   },
-      //   { id: 6, name: "Kabir Shah", class: "10A", status: "absent" },
-      // ]);
 
       setLastUpdated(new Date());
       setLoading(false);
@@ -196,6 +164,20 @@ function HomePage() {
       !`${s.name} ${s.class}`.toLowerCase().includes(search.toLowerCase())
     )
       return false;
+    return true;
+  });
+
+  // Apply department/batch/class filters
+  const [filters, setFilters] = useState({ deptId: '', batchId: '', classGroupId: '' });
+  
+  const finalFiltered = filtered.filter(s => {
+    const student = students.find(st => st.roll_no === s.roll_no);
+    if (!student) return true;
+    
+    if (filters.deptId && student.department?.id !== filters.deptId) return false;
+    if (filters.batchId && student.batch?.id !== filters.batchId) return false;
+    if (filters.classGroupId && student.class_group?.id !== filters.classGroupId) return false;
+    
     return true;
   });
 
@@ -278,9 +260,8 @@ function HomePage() {
       >
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <ChainedSelects
-            onChange={({ deptId, batchId, classGroupId }) => {
-              // optional: fetch students for the selected class/batch
-              // e.g. fetch(`/api/students?class=${classGroupId}&batch=${batchId}`)...
+            onChange={(filterValues) => {
+              setFilters(filterValues);
             }}
           />
           <label style={{ fontSize: 13 }}>
@@ -349,15 +330,14 @@ function HomePage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 && (
+            {finalFiltered.length === 0 && (
               <tr>
                 <td colSpan={4} style={{ padding: 12, color: "#6b7280" }}>
                   No students match filters.
                 </td>
               </tr>
             )}
-            {/* {console.log(students)} */}
-            {filtered.map((s) => (
+            {finalFiltered.map((s) => (
               <tr key={s.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                 <td style={{ padding: "10px 6px" }}>{s.name}</td>
                 <td style={{ padding: "10px 6px" }}>{s.class}</td>
@@ -365,12 +345,7 @@ function HomePage() {
                   <StatusBadge status={s.status} />
                 </td>
                 <td style={{ padding: "10px 6px" }}>
-                  {s.time
-                    ? new Date(s.time).toLocaleTimeString("en-US", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : "—"}
+                  {formatNPTOrDash(s.time)}
                 </td>
               </tr>
             ))}

@@ -4,6 +4,7 @@ import QRScanner from "../components/QR/QRScanner";
 import ManualRollInput from "../components/common/ManualRollInput";
 import FaceScan from "../components/FaceScan/FaceScan";
 import AttendanceResult from "../components/Attendance/AttendanceResult";
+import { formatNPTOrDash } from "../utils/helpers";
 
 const AttendancePage = () => {
   const [step, setStep] = useState("choose");
@@ -202,17 +203,18 @@ const AttendancePage = () => {
                         "N/A"}
                     </div>
                     <div>
-                      Department:{" "}Last Atte
+                      Department:{" "}
                       {lastAttendance.department ||
                         lastAttendance.departmentName ||
                         "N/A"}
                     </div>
                     <div>
                       Time:{" "}
-                      {lastAttendance.timeIn ||
+                      {formatNPTOrDash(
                         lastAttendance.time ||
-                        lastAttendance.timestamp ||
-                        "N/A"}
+                        lastAttendance.timeIn ||
+                        lastAttendance.timestamp
+                      )}
                     </div>
                     <div>
                       {console.log(lastAttendance)}

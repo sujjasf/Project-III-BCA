@@ -23,10 +23,17 @@ from django.utils import timezone
 NEPAL_TZ = timezone.get_fixed_timezone(5 * 60 + 45)  # UTC+5:45
 
 def _local_time_iso(d, t):
+    """Convert stored date+time to Nepal time ISO (+05:45).
+
+    We now store attendance.times in Nepal local time to avoid offset confusion.
+    This function attaches Asia/Kathmandu tz to the stored time and returns ISO.
+    Example: "2026-01-26T20:10:39.466932+05:45".
+    """
     if not d or not t:
         return None
-    utc_dt = datetime.combine(d, t, tzinfo=dt_timezone.utc)
-    return utc_dt.astimezone(NEPAL_TZ).isoformat()
+    # Stored time is local NPT (naive). Attach NEPAL_TZ explicitly.
+    local_dt = datetime.combine(d, t, tzinfo=NEPAL_TZ)
+    return local_dt.isoformat()
 
 def _now_local_iso():
     return timezone.localtime(timezone.now(), NEPAL_TZ).isoformat()
@@ -81,7 +88,7 @@ class AttendanceStatusList(APIView):
                 if att:
                     _local_dt_iso = _local_time_iso(today, att.time)
                     attendance_time = _local_dt_iso
-                    local_dt = datetime.fromisoformat(local_dt_iso)
+                    local_dt = datetime.fromisoformat(_local_dt_iso)
                     att_time_local = local_dt.time()
                     if(att_time_local <= CUTOFF_TIME):
                         status = "on_time"
@@ -176,11 +183,17 @@ class MarkAttendance(APIView):
             return Response({"error": f"Error processing image: {str(e)}"}, status=500)
 
         if matched_student:
-            today = timezone.now().date()
+            today = timezone.localdate()
+            now_local = timezone.localtime(timezone.now(), NEPAL_TZ)
             if Attendance.objects.filter(student=student, date=today).exists():
                 print("Attendance already marked today")
                 return Response({"message": "Attendance already marked today"})
-            attendance = Attendance.objects.create(student=student)  # <-- capture created record
+            # Store time explicitly in Nepal local time to avoid double conversions
+            attendance = Attendance.objects.create(
+                student=student,
+                date=today,
+                time=now_local.timetz(),
+            )  # <-- capture created record
             try:
                 saved_path = save_attendance_image_from_path(path, roll_no)
                 logger.info(f"Saved attendance image to {saved_path}")

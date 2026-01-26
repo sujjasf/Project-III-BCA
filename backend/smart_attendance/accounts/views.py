@@ -26,6 +26,26 @@ def batch_classgroups(request, batch_id):
     return JsonResponse(list(qs), safe=False)
 
 
+def all_batches(request):
+    """Return all batches across all departments"""
+    qs = Batch.objects.order_by('name').values('id', 'name')
+    return JsonResponse(list(qs), safe=False)
+
+
+def all_classgroups(request):
+    """Return all class groups with their department and batch info"""
+    qs = ClassGroup.objects.select_related('department', 'batch').order_by('name').values(
+        'id', 'name', 'department_id', 'department__name', 'batch_id', 'batch__name'
+    )
+    return JsonResponse(list(qs), safe=False)
+
+
+def department_classgroups(request, dept_id):
+    """Return class groups for a specific department"""
+    qs = ClassGroup.objects.filter(department_id=dept_id).values('id', 'name', 'batch_id')
+    return JsonResponse(list(qs), safe=False)
+
+
 class RegisterStudent(APIView):
     def post(self, request):
         # handle file upload via DRF
