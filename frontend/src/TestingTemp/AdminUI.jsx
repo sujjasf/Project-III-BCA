@@ -12,4 +12,4 @@ function AdminUI() {
   );
 }
 
-export AdminUI;
+export default AdminUI;

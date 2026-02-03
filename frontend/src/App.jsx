@@ -9,6 +9,7 @@ import AdminStudentsPage from './pages/AdminStudents'
 import AdminSettings from './pages/AdminSettings'
 import StudentDetail from './pages/StudentDetail'
 import AddStudent from "./components/Admin/StudentManagement/AddStudent";
+import AdminLookups from "./pages/AdminLookups";
 
 function App() {
 
@@ -18,6 +19,7 @@ function App() {
             <Route path="/" element={<AttendancePage />} />
             <Route path="/home" element={<HomePage />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/lookups" element={<AdminLookups />} />
             <Route path="/admin/students" element={<AdminStudentsPage />} />
             <Route path="/admin/students/add" element={<AddStudent />} />
             <Route path="/admin/settings" element={<AdminSettings />} />

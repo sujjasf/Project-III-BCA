@@ -20,8 +20,17 @@ from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
 from accounts.views import (
-    StudentViewSet, StudentListView, departments_list, department_batches,
-    department_classgroups, all_batches, batch_classgroups, all_classgroups,
+    StudentViewSet,
+    StudentListView,
+    departments_list,
+    department_detail,
+    department_batches,
+    department_classgroups,
+    all_batches,
+    batch_detail,
+    batch_classgroups,
+    all_classgroups,
+    classgroup_detail,
     RegisterStudent,  # <-- expose register/ endpoint
 )
 from attendance.views import (
@@ -47,11 +56,14 @@ urlpatterns = [
     path('api/student/<str:roll_no>/attendance/', StudentAttendanceDetail.as_view()),
     path('api/students/', StudentListView.as_view()),
     path('api/departments/', departments_list),
+    path('api/departments/<int:dept_id>/', department_detail),
     path('api/departments/<int:dept_id>/batches/', department_batches),
     path('api/departments/<int:dept_id>/classgroups/', department_classgroups),
     path('api/batches/', all_batches),
+    path('api/batches/<int:batch_id>/', batch_detail),
     path('api/batches/<int:batch_id>/classgroups/', batch_classgroups),
     path('api/classgroups/', all_classgroups),
+    path('api/classgroups/<int:classgroup_id>/', classgroup_detail),
 
     # Admin PIN / auth endpoints
     path('api/admin/auth/', AdminAuthAPIView.as_view()),

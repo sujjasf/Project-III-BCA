@@ -70,6 +70,30 @@ export default function StudentDetail() {
   const [isEditing, setIsEditing] = useState(false);
   const [attForm, setAttForm] = useState(null); // used while editing today's attendance
 
+  // Lightbox state for clicking images (profile / QR)
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState(null);
+
+  const openLightbox = (src) => {
+    if (!src) return;
+    setLightboxSrc(src);
+    setLightboxOpen(true);
+  };
+
+  const closeLightbox = () => {
+    setLightboxOpen(false);
+    setLightboxSrc(null);
+  };
+
+  // Close lightbox when Escape is pressed
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === "Escape" && lightboxOpen) closeLightbox();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightboxOpen]);
+
   const [allDepartments, setAllDepartments] = useState([]);
   const [allBatches, setAllBatches] = useState([]);
   const [allClassGroups, setAllClassGroups] = useState([]);
@@ -85,7 +109,6 @@ export default function StudentDetail() {
   // Editing a specific historical attendance record
   const [editingAttendanceId, setEditingAttendanceId] = useState(null);
   const [editingTime, setEditingTime] = useState(""); // HH:MM
-  const [editingDate, setEditingDate] = useState(""); // YYYY-MM-DD (used when building datetime payload)
   const [editError, setEditError] = useState("");
 
   // --- Load student and today's attendance summary ---
@@ -95,30 +118,43 @@ export default function StudentDetail() {
       setLoading(true);
       setError("");
       try {
-        console.log(`Fetching students from: ${API_BASE}/api/students/?page_size=1000`);
+        console.log(
+          `Fetching students from: ${API_BASE}/api/students/?page_size=1000`,
+        );
         const [sr, ar] = await Promise.all([
           axios.get(`${API_BASE}/api/students/?page_size=1000`),
-          axios.get(`${API_BASE}/api/attendanceStatus/list/`).catch(e => {
+          axios.get(`${API_BASE}/api/attendanceStatus/list/`).catch((e) => {
             console.warn("AttendanceStatusList failed, continuing anyway:", e);
             return { data: { results: [] } };
           }),
         ]);
-        
+
         console.log("Students response:", sr.data);
         console.log("Attendance response:", ar.data);
-        
+
         // Handle both paginated and non-paginated responses
         const students = sr?.data?.results || sr?.data || [];
         console.log(`Total students fetched: ${students.length}`);
-        console.log("Student roll numbers:", students.map(s => s.roll_no));
-        
+        console.log(
+          "Student roll numbers:",
+          students.map((s) => s.roll_no),
+        );
+
         const found = students.find(
           (s) => String(s.roll_no).trim() === String(rollNo).trim(),
         );
-        
+
         if (!found) {
-          console.log(`Student with rollNo "${rollNo}" not found in:`, students.map(s => `"${s.roll_no}"`));
-          setError(`Student with roll number "${rollNo}" not found. Available: ${students.slice(0, 5).map(s => s.roll_no).join(', ')}${students.length > 5 ? '...' : ''}`);
+          console.log(
+            `Student with rollNo "${rollNo}" not found in:`,
+            students.map((s) => `"${s.roll_no}"`),
+          );
+          setError(
+            `Student with roll number "${rollNo}" not found. Available: ${students
+              .slice(0, 5)
+              .map((s) => s.roll_no)
+              .join(", ")}${students.length > 5 ? "..." : ""}`,
+          );
           setStudent(null);
           setAttendance(null);
         } else {
@@ -126,13 +162,19 @@ export default function StudentDetail() {
           setStudent(found);
           const allAtt = ar?.data?.results || [];
           const todayAtt =
-            allAtt.find((a) => String(a.roll_no).trim() === String(rollNo).trim()) || null;
+            allAtt.find(
+              (a) => String(a.roll_no).trim() === String(rollNo).trim(),
+            ) || null;
           setAttendance(todayAtt);
           setError("");
         }
       } catch (e) {
         console.error("Failed to load student/attendance data:", e);
-        const errorMsg = e?.response?.data?.error || e?.response?.data?.detail || e?.message || "Failed to load student data. Please check server connection.";
+        const errorMsg =
+          e?.response?.data?.error ||
+          e?.response?.data?.detail ||
+          e?.message ||
+          "Failed to load student data. Please check server connection.";
         setError(`Error: ${errorMsg}`);
         setStudent(null);
         setAttendance(null);
@@ -300,15 +342,20 @@ export default function StudentDetail() {
             prev
               ? {
                   ...prev,
-                  status: resp?.data?.status ?? computeStatusFromTime(attForm.time),
+                  status:
+                    resp?.data?.status ?? computeStatusFromTime(attForm.time),
                   time: resp?.data?.time ?? payloadTime,
-                  alreadyMarked: resp?.data?.alreadyMarked ?? !!attForm.alreadyMarked,
+                  alreadyMarked:
+                    resp?.data?.alreadyMarked ?? !!attForm.alreadyMarked,
                 }
               : prev,
           );
         } catch (err) {
           console.warn("Attendance PATCH failed.", err);
-          const msg = err?.response?.data?.detail || err?.message || "Attendance save failed.";
+          const msg =
+            err?.response?.data?.detail ||
+            err?.message ||
+            "Attendance save failed.";
           setError(typeof msg === "string" ? msg : JSON.stringify(msg));
         }
       }
@@ -323,16 +370,26 @@ export default function StudentDetail() {
   }
 
   const imageUrl = useMemo(() => {
-    if (!student?.image) return "https://i.pravatar.cc/80?img=1";
-    // Ensure we have proper URL - handle both relative and absolute paths
+    const defaultImage = `${API_BASE}/media/students/default.png`;
+    if (!student) return defaultImage;
+
+    // Prefer the explicit URL provided by the backend serializer
+    if (student.image_url) return student.image_url;
+
+    // Fallback to older `student.image` string (may be relative path)
     const imagePath = student.image;
-    // If it's already a full URL, use it as is
-    if (imagePath.startsWith('http')) {
-      return imagePath;
+    if (!imagePath) return defaultImage;
+
+    if (typeof imagePath === "string") {
+      // Full URL already
+      if (imagePath.startsWith("http")) return imagePath;
+      // Already a /media/... path
+      if (imagePath.startsWith("/media")) return `${API_BASE}${imagePath}`;
     }
-    // Otherwise, prepend API_BASE
+
+    // Default fallback: prepend /media/
     return `${API_BASE}/media/${imagePath}`;
-  }, [student?.image]);
+  }, [student]);
 
   // --- Edit a historical attendance record: prepare editing state ---
   const handleEditAttendance = (record) => {
@@ -340,9 +397,6 @@ export default function StudentDetail() {
     // id might be `id` or `attendanceId` depending on API shape
     const aid = record.id || record.attendanceId || record.attendance_id;
     setEditingAttendanceId(aid);
-
-    // set editingDate (use record.date if present)
-    setEditingDate(record.date || "");
 
     // derive HH:MM for editingTime from the stored time
     if (record.time) {
@@ -398,9 +452,9 @@ export default function StudentDetail() {
 
       const resp = await axios.patch(
         `${API_BASE}/api/attendance/${editingAttendanceId}/`,
-        { 
+        {
           time: payloadTime,
-          status: "on_time" // Will be auto-computed by backend
+          status: "on_time", // Will be auto-computed by backend
         },
         { headers: { "Content-Type": "application/json" } },
       );
@@ -410,10 +464,10 @@ export default function StudentDetail() {
         const updated = attendanceDetails.records.map((r) => {
           const rid = r.id || r.attendanceId || r.attendance_id;
           if (String(rid) === String(editingAttendanceId)) {
-            return { 
-              ...r, 
+            return {
+              ...r,
               time: resp.data.time ?? payloadTime,
-              status: resp.data.status ?? "on_time"
+              status: resp.data.status ?? "on_time",
             };
           }
           return r;
@@ -424,18 +478,19 @@ export default function StudentDetail() {
       // If this record is today's attendance summary object, update that too
       if (attendance && String(attendance.id) === String(editingAttendanceId)) {
         setAttendance((prev) =>
-          prev ? { 
-            ...prev, 
-            time: resp.data.time ?? payloadTime,
-            status: resp.data.status ?? "on_time"
-          } : prev,
+          prev
+            ? {
+                ...prev,
+                time: resp.data.time ?? payloadTime,
+                status: resp.data.status ?? "on_time",
+              }
+            : prev,
         );
       }
 
       // Clear editing state
       setEditingAttendanceId(null);
       setEditingTime("");
-      setEditingDate("");
       setEditError("");
     } catch (err) {
       console.error("Attendance PATCH failed:", err);
@@ -444,7 +499,9 @@ export default function StudentDetail() {
         err?.response?.data?.detail ||
         err?.message ||
         "Failed to update attendance";
-      setEditError(typeof errMsg === "string" ? errMsg : JSON.stringify(errMsg));
+      setEditError(
+        typeof errMsg === "string" ? errMsg : JSON.stringify(errMsg),
+      );
     }
   };
 
@@ -452,7 +509,6 @@ export default function StudentDetail() {
   const handleCancelEdit = () => {
     setEditingAttendanceId(null);
     setEditingTime("");
-    setEditingDate("");
     setEditError("");
   };
 
@@ -544,7 +600,9 @@ export default function StudentDetail() {
             <>
               <div className="bg-white p-6 rounded shadow">
                 {loading ? (
-                  <div className="text-gray-500 text-sm">Loading student data…</div>
+                  <div className="text-gray-500 text-sm">
+                    Loading student data…
+                  </div>
                 ) : error ? (
                   <div className="bg-red-50 text-red-700 text-sm p-4 rounded border border-red-200">
                     <strong>Error:</strong> {error}
@@ -552,7 +610,10 @@ export default function StudentDetail() {
                       <p>Make sure:</p>
                       <ul className="list-disc pl-5 mt-1">
                         <li>Backend server is running on {API_BASE}</li>
-                        <li>The student with roll number "{rollNo}" exists in the database</li>
+                        <li>
+                          The student with roll number "{rollNo}" exists in the
+                          database
+                        </li>
                         <li>API endpoint `/api/students/` is accessible</li>
                       </ul>
                     </div>
@@ -560,15 +621,85 @@ export default function StudentDetail() {
                 ) : student ? (
                   <div className="space-y-4">
                     <div className="flex gap-4 items-center">
-                      <img
-                        src={imageUrl}
-                        alt="avatar"
-                        className="w-24 h-24 rounded-lg object-cover bg-gray-100"
-                        onError={(e) => {
-                          console.error("Image failed to load:", imageUrl);
-                          e.target.src = "https://i.pravatar.cc/80?img=1";
-                        }}
-                      />
+                      <button
+                        type="button"
+                        onClick={() => openLightbox(imageUrl)}
+                        className="rounded-lg overflow-hidden p-0 bg-transparent border-0"
+                        title="Open profile image"
+                      >
+                        <img
+                          src={imageUrl}
+                          alt="avatar"
+                          className="w-24 h-24 rounded-lg object-cover bg-gray-100"
+                          onError={(e) => {
+                            const defaultImg = `${API_BASE}/media/students/default.png`;
+                            console.error(
+                              "Image failed to load:",
+                              e?.target?.src,
+                            );
+                            // avoid infinite loop: only set default if it's not already the default
+                            if (e.target && e.target.src !== defaultImg) {
+                              e.target.src = defaultImg;
+                            }
+                          }}
+                        />
+                      </button>
+                      {/* QR code (if available) */}
+                      {(student?.qr_code_url || student?.qr_code) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const src = student.qr_code_url
+                              ? student.qr_code_url
+                              : typeof student.qr_code === "string" &&
+                                  student.qr_code.startsWith("http")
+                                ? student.qr_code
+                                : `${API_BASE}/media/${student.qr_code}`;
+                            openLightbox(src);
+                          }}
+                          title="Open QR code"
+                          className="flex-shrink-0 p-0 bg-transparent border-0"
+                        >
+                          <img
+                            src={
+                              student.qr_code_url
+                                ? student.qr_code_url
+                                : typeof student.qr_code === "string" &&
+                                    student.qr_code.startsWith("http")
+                                  ? student.qr_code
+                                  : `${API_BASE}/media/${student.qr_code}`
+                            }
+                            alt="QR"
+                            className="w-20 h-20 object-contain bg-white border rounded p-1"
+                            onError={(e) => {
+                              // hide QR image if it fails to load
+                              if (e && e.target && e.target.style) {
+                                e.target.style.display = "none";
+                              }
+                            }}
+                          />
+                        </button>
+                      )}
+                      {/* Lightbox overlay */}
+                      {lightboxOpen && lightboxSrc && (
+                        <div
+                          role="dialog"
+                          aria-modal="true"
+                          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+                          onClick={closeLightbox}
+                        >
+                          <div
+                            className="max-w-full max-h-full"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <img
+                              src={lightboxSrc}
+                              alt="Preview"
+                              className="max-w-[90vw] max-h-[90vh] object-contain rounded shadow-lg bg-white"
+                            />
+                          </div>
+                        </div>
+                      )}
                       <div className="flex-1">
                         <div className="mb-2">
                           <label className="text-xs text-gray-500">Name</label>
@@ -893,7 +1024,9 @@ export default function StudentDetail() {
                                       {isThisEditing ? (
                                         <div className="flex items-center gap-2 flex-wrap">
                                           <div className="flex items-center gap-1">
-                                            <label className="text-xs text-gray-600">Time:</label>
+                                            <label className="text-xs text-gray-600">
+                                              Time:
+                                            </label>
                                             <input
                                               type="time"
                                               value={editingTime}
@@ -931,15 +1064,14 @@ export default function StudentDetail() {
                                                 )
                                               : "—"}
                                           </span>
-                                          {/* 
+                                          {/*
                                           <button
                                             onClick={() => {
-                                              setEditingDate(record.date || "");
                                               handleEditAttendance(record);
                                             }}
                                             className="px-2 py-1 border rounded text-xs hover:bg-blue-50">
                                             Edit
-                                          </button> 
+                                          </button>
                                           */}
                                         </div>
                                       )}
@@ -963,8 +1095,6 @@ export default function StudentDetail() {
                                       {!isThisEditing && (
                                         <button
                                           onClick={() => {
-                                            // populate editingDate from record.date for payload construction
-                                            setEditingDate(record.date || "");
                                             handleEditAttendance(record);
                                           }}
                                           className="px-2 py-1 border rounded text-xs"
